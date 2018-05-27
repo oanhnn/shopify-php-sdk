@@ -89,11 +89,7 @@ class ShopifySDK
         $this->appKey = $config['app_key'];
         $this->appSecret = $config['app_secret'];
         $this->appPassword = $config['app_password'] ?? null;
-
-        if (!empty($option['shop_domain'])) {
-            Utils::validateShopDomain($option['shop_domain']);
-            $this->shopDomain = $option['shop_domain'];
-        }
+        $this->shopDomain = $config['shop_domain'];
 
         $this->client = $this->createClient($config['http_client']);
         if ($this->appPassword) {
@@ -108,7 +104,7 @@ class ShopifySDK
      */
     public function getShopDomain(): string
     {
-        return $this->shopDomain ?? $this->getShopDomainFromQuery();
+        return $this->shopDomain;
     }
 
     /**
@@ -196,14 +192,6 @@ class ShopifySDK
     }
 
     /**
-     * @return string|null
-     */
-    protected function getShopDomainFromQuery(): ?string
-    {
-        return filter_input(INPUT_GET, 'shop', FILTER_VALIDATE_DOMAIN);
-    }
-
-    /**
      * @param string $path The uri path
      * @param array $params The query parameters
      * @return \Psr\Http\Message\UriInterface
@@ -231,12 +219,14 @@ class ShopifySDK
             'app_key' => getenv(static::APP_KEY_ENV_NAME),
             'app_secret' => getenv(static::APP_SECRET_ENV_NAME),
             'app_password' => getenv(static::APP_PASSWORD_ENV_NAME),
+            'shop_domain' => '',
+            'http_client' => null,
         ]);
 
         $resolver->setAllowedTypes('app_key', 'string');
         $resolver->setAllowedTypes('app_secret', 'string');
-        $resolver->setAllowedTypes('app_password', ['string', 'null']);
-        $resolver->setAllowedTypes('shop_domain', ['string', 'null']);
+        $resolver->setAllowedTypes('app_password', ['null', 'string']);
+        $resolver->setAllowedTypes('shop_domain', 'string');
         $resolver->addAllowedTypes('http_client', ['null', HttpClient::class]);
 
         $option = $resolver->resolve($config);
@@ -252,6 +242,12 @@ class ShopifySDK
             throw new InvalidArgumentException(
                 'Required "app_secret" key not supplied in config and ' .
                 'could not find environment variable "' . static::APP_SECRET_ENV_NAME . '"'
+            );
+        }
+
+        if (empty($option['shop_domain'])) {
+            throw new InvalidArgumentException(
+                'Required "shop_domain" key not supplied in config'
             );
         }
 

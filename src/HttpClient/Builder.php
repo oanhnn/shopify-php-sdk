@@ -80,8 +80,7 @@ class Builder
         HttpClient $httpClient = null,
         RequestFactory $requestFactory = null,
         StreamFactory $streamFactory = null
-    )
-    {
+    ) {
         $this->httpClient = $httpClient ?: HttpClientDiscovery::find();
         $this->requestFactory = $requestFactory ?: MessageFactoryDiscovery::find();
         $this->streamFactory = $streamFactory ?: StreamFactoryDiscovery::find();

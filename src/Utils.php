@@ -13,7 +13,7 @@ class Utils
      */
     public static function validateShopDomain(string $domain)
     {
-        if (preg_match('/^([a-z0-9\-]{3,100})\.myshopify\.com$/', $domain) !== 1) {
+        if (preg_match('/^([a-z0-9][a-z0-9\-]{1,98}[a-z0-9])\.myshopify\.com$/', $domain) !== 1) {
             throw new InvalidArgumentException(
                 'Shop name should be 3-100 letters, numbers, or hyphens e.g. your-store.myshopify.com'
             );
