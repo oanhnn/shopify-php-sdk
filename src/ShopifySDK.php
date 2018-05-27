@@ -3,12 +3,9 @@
 namespace Shopify;
 
 use Http\Client\HttpClient;
-use Http\Discovery\UriFactoryDiscovery;
-use Psr\Http\Message\UriInterface;
 use Shopify\Credential\AccessToken;
-use Shopify\Credential\PrivateAppCredential;
-use Shopify\Credential\PublicAppCredential;
 use Shopify\Exception\InvalidArgumentException;
+use Shopify\Helper\AuthenticationHelper;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class ShopifySDK
@@ -43,19 +40,9 @@ class ShopifySDK
     /**
      * The Shopify app entity.
      *
-     * @var string
+     * @var App
      */
-    protected $appKey;
-
-    /**
-     * @var string
-     */
-    protected $appSecret;
-
-    /**
-     * @var string|null
-     */
-    protected $appPassword;
+    protected $app;
 
     /**
      * The Shopify client service.
@@ -72,6 +59,8 @@ class ShopifySDK
     protected $defaultAccessToken;
 
     /**
+     * Shopify shop domain
+     *
      * @var string
      */
     protected $shopDomain;
@@ -86,16 +75,12 @@ class ShopifySDK
     {
         $config = $this->prepare($config);
 
-        $this->appKey = $config['app_key'];
-        $this->appSecret = $config['app_secret'];
-        $this->appPassword = $config['app_password'] ?? null;
+        $this->app = new App($config['app_key'], $config['app_secret'], $config['app_password']);
         $this->shopDomain = $config['shop_domain'];
-
         $this->client = $this->createClient($config['http_client']);
-        if ($this->appPassword) {
-            $this->client->authenticate(
-                new PrivateAppCredential($this->appKey, $this->appSecret, $this->appPassword)
-            );
+
+        if ($this->app->isPrivate()) {
+            $this->client->authenticate($this->app->makePrivateCredential());
         }
     }
 
@@ -131,78 +116,25 @@ class ShopifySDK
      * Sets the AccessToken entity to use with requests.
      *
      * @param AccessToken|string $accessToken The access token to save.
-     * @return void
+     * @return ShopifySDK
      * @throws InvalidArgumentException
      */
     public function setAccessToken($accessToken)
     {
-        if (!is_string($accessToken) && !$accessToken instanceof AccessToken) {
-            throw new InvalidArgumentException(
-                'The default access token must be of type "string" or ' . AccessToken::class
-            );
-        }
+        $appCredential = $this->app->makePublicCredential($accessToken);
 
-        $this->client->authenticate($appCredential = new PublicAppCredential($accessToken));
         $this->defaultAccessToken = $appCredential->getAccessToken();
+        $this->client->authenticate($appCredential);
+
+        return $this;
     }
 
     /**
-     * Generates an authorization URL to begin the process of authenticating a user.
-     *
-     * @param string $redirectUrl The callback URL to redirect to.
-     * @param array|string $scope An array of permissions to request.
-     * @param array $params An array of parameters to generate URL.
-     * @return string
+     * @return AuthenticationHelper
      */
-    public function getAuthorizationUrl(string $redirectUrl, $scope = [], array $params = []): string
+    public function getAuthenticationHelper()
     {
-        $params += [
-            'client_id' => $this->appKey,
-            'redirect_uri' => $redirectUrl,
-            'response_type' => 'code',
-            'scope' => implode(',', is_array($scope) ? $scope : [$scope]),
-        ];
-
-        return (string)$this->buildUri('/oauth/authorize', $params);
-    }
-
-    /**
-     * Get a valid access token from a code.
-     *
-     * @param string $redirectUri
-     * @param string $code
-     * @return AccessToken
-     * @throws \Http\Client\Exception
-     */
-    public function getAccessTokenFromCode(string $redirectUri, string $code)
-    {
-        $params = [
-            'client_id' => $this->appKey,
-            'client_secret' => $this->appSecret,
-            'code' => $code,
-            'redirect_uri' => Utils::removeQueryParams($redirectUri, ['state', 'code']),
-        ];
-
-        $result = $this->client->post('/oauth/access_token', $params);
-        if (!is_array($result) || !isset($result['access_token'])) {
-            // TODO: throw exception
-        }
-
-        return new AccessToken($result['access_token']);
-    }
-
-    /**
-     * @param string $path The uri path
-     * @param array $params The query parameters
-     * @return \Psr\Http\Message\UriInterface
-     * @throws \InvalidArgumentException
-     */
-    protected function buildUri(string $path, array $params = []): UriInterface
-    {
-        return UriFactoryDiscovery::find()->createUri('https://your-store.myshopify.com')
-            ->withHost($this->shopDomain)
-            ->withPath('/admin/' . ltrim($path, '/'))
-            ->withQuery(http_build_query($params, null, '&'));
+        return new AuthenticationHelper($this->app, $this->client);
     }
 
     /**

@@ -2,15 +2,14 @@
 
 namespace Shopify;
 
+use Http\Discovery\UriFactoryDiscovery;
 use Shopify\Credential\CredentialInterface;
 use Shopify\HttpClient\Builder;
 use Shopify\HttpClient\Message\ResponseMediator;
 use Shopify\HttpClient\Plugin\Authentication;
 use Shopify\HttpClient\Plugin\ErrorDetector;
 use Shopify\HttpClient\Plugin\History;
-use Shopify\HttpClient\Plugin\PathPrepend;
 use Shopify\HttpClient\Plugin\Retry;
-use Shopify\HttpClient\Plugin\ShopDomain;
 use Http\Client\Common\HttpMethodsClient;
 use Http\Client\Common\Plugin;
 use Http\Client\HttpClient;
@@ -30,6 +29,11 @@ class Client
      * @var History
      */
     private $history;
+
+    /**
+     * @var string Shopify shop domain
+     */
+    protected $domain;
 
     /**
      * Instantiate a new Shopify client.
@@ -80,11 +84,10 @@ class Client
      */
     public function get($path, array $params = [], array $headers = [])
     {
-        if (count($params) > 0) {
-            $path .= '?'.http_build_query($params);
-        }
+        $uri = $this->buildUri($path, $params);
+        $response = $this->getHttpClient()->get($uri, $headers);
 
-        return ResponseMediator::getContent($this->getHttpClient()->get($path, $headers));
+        return ResponseMediator::getContent($response);
     }
 
     /**
@@ -98,11 +101,9 @@ class Client
      */
     public function head($path, array $params = [], array $headers = [])
     {
-        if (count($params) > 0) {
-            $path .= '?'.http_build_query($params);
-        }
+        $uri = $this->buildUri($path, $params);
 
-        return $this->getHttpClient()->head($path, $headers);
+        return $this->getHttpClient()->head($uri, $headers);
     }
 
     /**
@@ -134,8 +135,9 @@ class Client
      */
     public function postRaw($path, $body, array $headers = [])
     {
+        $uri = $this->buildUri($path);
         $response = $this->getHttpClient()->post(
-            $path,
+            $uri,
             $headers,
             $body
         );
@@ -154,8 +156,9 @@ class Client
      */
     public function patch($path, array $params = [], array $headers = [])
     {
+        $uri = $this->buildUri($path);
         $response = $this->getHttpClient()->patch(
-            $path,
+            $uri,
             $headers,
             $this->createJsonBody($params)
         );
@@ -174,8 +177,9 @@ class Client
      */
     public function put($path, array $params = [], array $headers = [])
     {
+        $uri = $this->buildUri($path);
         $response = $this->getHttpClient()->put(
-            $path,
+            $uri,
             $headers,
             $this->createJsonBody($params)
         );
@@ -194,13 +198,30 @@ class Client
      */
     public function delete($path, array $params = [], array $headers = [])
     {
+        $uri = $this->buildUri($path, $params);
         $response = $this->getHttpClient()->delete(
-            $path,
+            $uri,
             $headers,
             $this->createJsonBody($params)
         );
 
         return ResponseMediator::getContent($response);
+    }
+
+    /**
+     * @param string $path The uri path
+     * @param array $params The query parameters
+     * @return \Psr\Http\Message\UriInterface
+     * @throws \InvalidArgumentException
+     */
+    public function buildUri(string $path, array $params = []): string
+    {
+        return UriFactoryDiscovery::find()
+            ->createUri('https://your-store.myshopify.com')
+            ->withHost($this->domain)
+            ->withPath('/admin/' . ltrim($path, '/'))
+            ->withQuery(http_build_query($params, null, '&'))
+            ->__toString();
     }
 
     /**
@@ -213,27 +234,6 @@ class Client
     {
         $this->getHttpClientBuilder()->removePlugin(Authentication::class);
         $this->getHttpClientBuilder()->addPlugin(new Authentication($credential));
-
-        return $this;
-    }
-
-    /**
-     * Sets the Shopify shop domain
-     *
-     * @param string $domain The Shopify shop domain e.g. your-store.myshopify.com
-     * @return Client
-     * @throws \Shopify\Exception\InvalidArgumentException
-     */
-    private function setShopDomain(string $domain)
-    {
-        Utils::validateShopDomain($domain);
-
-        $builder = $this->getHttpClientBuilder();
-        $builder->removePlugin(PathPrepend::class);
-        $builder->removePlugin(ShopDomain::class);
-
-        $builder->addPlugin(new ShopDomain($domain, true));
-        $builder->addPlugin(new PathPrepend('/admin'));
 
         return $this;
     }
@@ -304,5 +304,20 @@ class Client
     protected function createJsonBody(array $params)
     {
         return (count($params) === 0) ? null : json_encode($params, empty($params) ? JSON_FORCE_OBJECT : 0);
+    }
+
+    /**
+     * Sets the Shopify shop domain
+     *
+     * @param string $domain The Shopify shop domain e.g. your-store.myshopify.com
+     * @return Client
+     * @throws \Shopify\Exception\InvalidArgumentException
+     */
+    protected function setShopDomain(string $domain)
+    {
+        Utils::validateShopDomain($domain);
+        $this->domain = $domain;
+
+        return $this;
     }
 }

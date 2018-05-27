@@ -34,17 +34,6 @@ class Utils
     }
 
     /**
-     * @param string $method
-     * @throws \Shopify\Exception\InvalidArgumentException
-     */
-    public static function validateHttpMethod(string $method)
-    {
-        if (!in_array($method, ['POST', 'PUT', 'PATCH', 'GET', 'DELETE', 'HEAD'], true)) {
-            throw new InvalidArgumentException('Method not valid');
-        }
-    }
-
-    /**
      * @param int $length
      * @return string
      * @throws \Exception

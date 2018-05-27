@@ -7,6 +7,16 @@ use Psr\Http\Message\RequestInterface;
 class PublicAppCredential implements CredentialInterface
 {
     /**
+     * @var string
+     */
+    protected $appKey;
+
+    /**
+     * @var string
+     */
+    protected $appSecret;
+
+    /**
      * @var AccessToken
      */
     protected $accessToken;
@@ -14,10 +24,14 @@ class PublicAppCredential implements CredentialInterface
     /**
      * PublicAppCredential constructor.
      *
+     * @param string $appKey
+     * @param string $appSecret
      * @param AccessToken|string $accessToken
      */
-    public function __construct($accessToken)
+    public function __construct(string $appKey, string $appSecret, $accessToken)
     {
+        $this->appKey = $appKey;
+        $this->appSecret = $appSecret;
         $this->accessToken = $accessToken instanceof AccessToken ? $accessToken : new AccessToken($accessToken);
     }
 
