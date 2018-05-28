@@ -47,7 +47,7 @@ class Client
         $this->httpClientBuilder = $builder = $httpClientBuilder ?: new Builder();
 
         $builder->addPlugin(new ErrorDetector());
-        $builder->addPlugin($this->history);
+        $builder->addPlugin(new Plugin\HistoryPlugin($this->history));
         $builder->addPlugin(new Retry(['retries' => 1]));
         $builder->addPlugin(new Plugin\RedirectPlugin());
         $builder->addPlugin(new Plugin\HeaderDefaultsPlugin([
@@ -120,7 +120,7 @@ class Client
         return $this->postRaw(
             $path,
             $this->createJsonBody($params),
-            $headers
+            array_merge(['Content-Type' => ['application/json']], $headers)
         );
     }
 
@@ -159,7 +159,7 @@ class Client
         $uri = $this->buildUri($path);
         $response = $this->getHttpClient()->patch(
             $uri,
-            $headers,
+            array_merge(['Content-Type' => ['application/json']], $headers),
             $this->createJsonBody($params)
         );
 
@@ -180,7 +180,7 @@ class Client
         $uri = $this->buildUri($path);
         $response = $this->getHttpClient()->put(
             $uri,
-            $headers,
+            array_merge(['Content-Type' => ['application/json']], $headers),
             $this->createJsonBody($params)
         );
 
@@ -201,7 +201,7 @@ class Client
         $uri = $this->buildUri($path, $params);
         $response = $this->getHttpClient()->delete(
             $uri,
-            $headers,
+            array_merge(['Content-Type' => ['application/json']], $headers),
             $this->createJsonBody($params)
         );
 

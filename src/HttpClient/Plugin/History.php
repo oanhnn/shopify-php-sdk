@@ -2,7 +2,7 @@
 
 namespace Shopify\HttpClient\Plugin;
 
-use Http\Client\Common\Plugin;
+use Http\Client\Common\Plugin\Journal;
 use Http\Client\Exception;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -10,7 +10,7 @@ use Psr\Http\Message\ResponseInterface;
 /**
  * A plugin to remember the last response.
  */
-final class History implements Plugin
+final class History implements Journal
 {
     /**
      * @var RequestInterface
@@ -36,22 +36,6 @@ final class History implements Plugin
     public function getLastResponse(): ? ResponseInterface
     {
         return $this->lastResponse;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function handleRequest(RequestInterface $request, callable $next, callable $first)
-    {
-        return $next($request)->then(function (ResponseInterface $response) use ($request) {
-            $this->addSuccess($request, $response);
-
-            return $response;
-        }, function (Exception $exception) use ($request) {
-            $this->addFailure($request, $exception);
-
-            throw $exception;
-        });
     }
 
     /**
