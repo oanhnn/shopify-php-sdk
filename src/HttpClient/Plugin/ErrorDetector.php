@@ -37,7 +37,7 @@ final class ErrorDetector implements Plugin
      */
     protected function transformResponseToException(RequestInterface $request, ResponseInterface $response)
     {
-        ResponseMediator::getApiLimit($response);
+        ResponseMediator::checkApiLimit($response);
 
         return $response;
     }

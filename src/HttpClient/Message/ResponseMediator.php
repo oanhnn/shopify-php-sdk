@@ -49,9 +49,9 @@ class ResponseMediator
 
     /**
      * @param ResponseInterface $response
-     * @return int
+     * @return void
      */
-    public static function getApiLimit(ResponseInterface $response)
+    public static function checkApiLimit(ResponseInterface $response)
     {
         $apiLimitHeader = self::getHeader($response, 'X-Shopify-Shop-Api-Call-Limit');
 
@@ -61,8 +61,6 @@ class ResponseMediator
                 throw new ApiLimitExceedException($limit);
             }
         }
-
-        return $limit;
     }
 
     /**
